@@ -12,14 +12,14 @@
 #include <iostream>
 #include <cctype>
 
-//#include "BlackLib.h"
-//#include "BlackUART.h"
+#include "BlackLib.h"
+#include "BlackUART.h"
 
 #define FALSE 0
 #define TRUE 1
 #define DEVICE "/dev/ttyO2"
 #define BAUDRATE B9600
-//using namespace BlackLib;
+using namespace BlackLib;
 using namespace std;
 
 volatile int STOP = FALSE;
