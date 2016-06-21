@@ -12,77 +12,31 @@
 #include <iostream>
 #include <cctype>
 
-#include "BlackLib.h"
-#include "BlackUART.h"
+//#include "BlackLib.h"
+//#include "BlackUART.h"
 
 #define FALSE 0
 #define TRUE 1
 #define DEVICE "/dev/ttyO2"
 #define BAUDRATE B9600
-using namespace BlackLib;
+//using namespace BlackLib;
 using namespace std;
 
 volatile int STOP = FALSE;
 void signal_handler_IO (int status); 	// signal hanler
 int wait_flag = TRUE;					// TRUE while no signal received
-/*
-int set_interface_attribs (int fd, int speed, int parity)
+
+void Write_Uart (const void *mess, int port)
 {
-        struct termios tty;
-        memset (&tty, 0, sizeof tty);
-        if (tcgetattr (fd, &tty) != 0)
-        {
-        	printf ("error %d from tcgetattr", errno);
-            return -1;
-        }
-
-        cfsetospeed (&tty, speed);
-        cfsetispeed (&tty, speed);
-
-        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-        // disable IGNBRK for mismatched speed tests; otherwise receive break
-        // as \000 chars
-        tty.c_iflag &= ~IGNBRK;         // disable break processing
-        tty.c_lflag = 0;                // no signaling chars, no echo,
-                                        // no canonical processing
-        tty.c_oflag = 0;                // no remapping, no delays
-        tty.c_cc[VMIN]  = 0;            // read doesn't block
-        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
-
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
-
-        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-                                        // enable reading
-        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-        tty.c_cflag |= parity;
-        tty.c_cflag &= ~CSTOPB;
-        tty.c_cflag &= ~CRTSCTS;
-
-        if (tcsetattr (fd, TCSANOW, &tty) != 0)
-        {
-        	printf ("error %d from tcsetattr", errno);
-            return -1;
-        }
-        return 0;
+	int len = 0;
+	char *ptr_i;
+	char *c_mess = (char*)mess;
+	for (ptr_i = c_mess; *ptr_i; ptr_i++)
+	     len++;
+	write(port, c_mess, len + 1);
+	sleep((len + 1 + 25) * 100);
 }
 
-void set_blocking (int fd, int should_block)
-{
-        struct termios tty;
-        memset (&tty, 0, sizeof tty);
-        if (tcgetattr (fd, &tty) != 0)
-        {
-                printf ("error %d from tggetattr", errno);
-                return;
-        }
-
-        tty.c_cc[VMIN]  = should_block ? 1 : 0;
-        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
-
-        if (tcsetattr (fd, TCSANOW, &tty) != 0)
-                printf ("error %d setting term attributes", errno);
-}
-*/
 int main(){
 
 //    std::string writeToUart2;
@@ -166,27 +120,6 @@ int main(){
     newtio.c_lflag = ICANON;
     newtio.c_cc[VMIN]=1;
     newtio.c_cc[VTIME]= 0;
-    /*tcgetattr (fd, &newtio);
-    cfsetospeed (&newtio, (speed_t)B9600);
-    cfsetispeed (&newtio, (speed_t)B9600);
-
-    // Setting Port Stuff
-    newtio.c_cflag     &=  ~PARENB;            // Make 8n1
-    newtio.c_cflag     &=  ~CSTOPB;
-    newtio.c_cflag     &=  ~CSIZE;
-    newtio.c_cflag     |=  CS8;
-    newtio.c_cflag     |=  (CLOCAL | CREAD);     // turn on READ & ignore ctrl lines
-    newtio.c_cflag     &=  ~CRTSCTS;           // no flow control
-
-    newtio.c_cc[VMIN]   =  5;                  // read number of character doesn't block
-    newtio.c_cc[VTIME]  =  0;                  // 0.5 seconds read timeout
-
-    newtio.c_iflag &= ~IGNBRK;
-    newtio.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
-    newtio.c_oflag &= ~OPOST;
-    newtio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-    //Make raw
-    cfmakeraw(&newtio);*/
 
     tcflush(fd, TCIFLUSH);
     tcsetattr(fd,TCSANOW,&newtio);
@@ -194,8 +127,10 @@ int main(){
 //    write (fd, "AT+RENEW\n", 9);
 //    usleep ((8 + 25) * 100);
 
-    write (fd, "Hello Quang Do!", 15);
-    usleep ((15 + 25) * 100);
+//    char test[] = "Hello Quang Do!";
+//    write (fd, test, strlen(test));
+//    usleep ((15 + 25) * 100);
+    Write_Uart("Hello Quang Do", fd);
 
 //    write (fd, "AT+AFTC000\n", 11);
 //    usleep ((11 + 25) * 100);
