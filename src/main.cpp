@@ -50,51 +50,6 @@ int main(){
 	struct sigaction saio; // definition of signal action
 	char buf[255];
 
-/*  BlackLib::BlackUART  Uart2(BlackLib::UART2,
-                               BlackLib::Baud9600,
-                               BlackLib::ParityNo,//ParityNo
-                               BlackLib::StopOne,
-                               BlackLib::Char8 );
-    // Pins on BeagleBone Black REV C
-    // UART2_TX -> GPIO_2 (P9.22)
-    // UART2_RX -> GPIO_3 (P9.21)
-    Uart2.flush( BlackLib::bothDirection );
-    bool isOpened = Uart2.open( BlackLib::ReadWrite | BlackLib::NonBlock );
-    if( !isOpened )
-    {
-    	std::cout << "UART DEVICE CAN\'T OPEN" << std::endl;
-    	exit(1);
-    }
-    else
-    {
-    	cout << "Start BLE Application " << std::endl;
-    }
-    string readstr = "";
-    readstr = Uart2.transfer("AT",50000);
-    if( readstr.compare("OK") == 0)
-    	cout << "Test AT Command: " << readstr << endl;
-    else
-    {
-    	cout << "ERROR: Please check HM-10 connection." << endl;
-    	exit(1);
-    }
-    readstr = "";
-    readstr = Uart2.transfer("AT+RENEW", 100000);
-    if (readstr.compare("OK+RENEW") == 0){
-    	cout << "RESET HM-10 to factory setting.\n" << readstr << endl;
-    	Uart2.transfer("AT+AFTC000", 80000);
-    	Uart2.transfer("AT+MODE2", 50000);
-    	Uart2.transfer("AT+RESET", 50000);
-
-    	cout << "Start connect HM-10 Module." << endl;
-    }
-    else
-    {
-    	cout << "Fail to renew module.\nRetry. Please wait.. ";
-    	readstr = Uart2.transfer("AT+RENEW", 500000);
-    	sleep(1);
-    	cout << readstr << endl;
-    }*/
     fd = open(DEVICE, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0)
     {
@@ -124,19 +79,7 @@ int main(){
     tcflush(fd, TCIFLUSH);
     tcsetattr(fd,TCSANOW,&newtio);
 
-//    write (fd, "AT+RENEW\n", 9);
-//    usleep ((8 + 25) * 100);
-
-//    char test[] = "Hello Quang Do!";
-//    write (fd, test, strlen(test));
-//    usleep ((15 + 25) * 100);
     Write_Uart("Hello Quang Do", fd);
-
-//    write (fd, "AT+AFTC000\n", 11);
-//    usleep ((11 + 25) * 100);
-
-//    write (fd, "AT+MODE0\n", 9);
-//    usleep ((9 + 25) * 100);
 
     while(STOP == FALSE)
     {
@@ -151,7 +94,7 @@ int main(){
         	res = read(fd, buf, 255);
         	buf[res]=0;
         	printf("%s - %d\n", buf, res);
-        	//if (res==1) STOP=TRUE; /* stop loop if only a CR was input */
+        	if (res==1) STOP=TRUE; /* stop loop if only a CR was input */
             wait_flag = TRUE;      /* wait for new input */
         }
         //write (fd, "AT", 2);
@@ -186,9 +129,6 @@ int main(){
     	}*/
     }
 
-//    Uart2.write("AT+RESET");
-//    write (fd, "AT+RESET\n", 9);
-//    usleep ((9 + 25) * 100);
     return 0;
 }
   /***************************************************************************
