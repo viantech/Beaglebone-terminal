@@ -18,12 +18,12 @@
 #define FALSE 0
 #define TRUE 1
 #define DEVICE "/dev/ttyUSB0"
-#define BAUDRATE B19200
+#define BAUDRATE B115200
 //using namespace BlackLib;
 using namespace std;
 
 void signal_handler_IO (int status); 	// signal hanler
-int __wait_flag_ACK = 0;					// TRUE while no signal received
+int _wait_flag_ACK = 0;					// TRUE while no signal received
 int fd;
 void Write_Uart (const void *mess, int port)
 {
@@ -33,18 +33,26 @@ void Write_Uart (const void *mess, int port)
 	for (ptr_i = c_mess; *ptr_i; ptr_i++)
 	     len++;
 	write(port, c_mess, len + 1);
-	tcflush(port, TCOFLUSH);
-	sleep((len + 1 + 25) * 100);
+	//tcflush(port, TCOFLUSH);
+	//sleep((len + 1 + 25) * 100);
 }
+bool Contains(const char* MyChar, const char* Search)
+{
+	char *cp = (char *)MyChar;
+	char *s1;
+	char *s2 = (char *)Search;
+	while (*cp)
+	{
+		s1 = cp;
+        while ( *s1 && *s2 && !(*s1-*s2) )
+                s1++, s2++;
 
-string Read_Uart(int port){
-	int index;
-	char read_buffer[255];
-	string buff_str;
-	index = read(port, read_buffer, 255);
-	read_buffer[index] = 0;
-	string readstr(read_buffer);
-	return buff_str;
+        if (!*s2)
+                return true;
+
+        cp++;
+	}
+	return false;
 }
 
 int main(){
@@ -78,52 +86,44 @@ int main(){
     newtio.c_oflag = 0;
     newtio.c_lflag = ICANON;
     newtio.c_cc[VMIN]=1;
-    newtio.c_cc[VTIME]= 0;
+    newtio.c_cc[VTIME]= 5;
 
-    tcflush(fd, TCOFLUSH);
+    tcflush(fd, TCIOFLUSH);
     tcsetattr(fd,TCSANOW,&newtio);
     /*File handler*/
     FILE *file_ptr;
     size_t flen = 0;
     char* line = NULL;
-    file_ptr = fopen ("/home/quangdo/Downloads/Intelhex/demo.hex", "r");
+    file_ptr = fopen ("/home/quangdo/Downloads/Intelhex/helllo.hex", "r");
     if (file_ptr == NULL) exit(EXIT_FAILURE);
 
-//    Write_Uart("ATI\r", fd);
-    //Write_Uart("ATI\r\n", fd);
-
+//    char* pre_com[10] = "AT+SCAST:";
+    char send_com[100];
+    send_com[0] = 0x41; //'A';
+    send_com[1] = 0x54; //'T';
+    send_com[2] = 0x2B; //'+';
+    send_com[3] = 0x53; //'S';
+    send_com[4] = 0x43; //'C';
+    send_com[5] = 0x41; //'A';
+    send_com[6] = 0x53; //'S';
+    send_com[7] = 0x54; //'T';
+    send_com[8] = 0x3A; //':';
+    //strcpy(send_com,pre_com);
     while(getline(&line, &flen, file_ptr) != -1 ) /* read a line */
     {
-        char pre_com[255] = "AT+SCAST:";
-    	strcat(line, "\r");
-    	strcat(pre_com, line);
-//    	cout <<   << pre_com << endl;
-    	Write_Uart(pre_com, fd);
-    	pre_com[255] = {0};
-    	while (__wait_flag_ACK == 0)
-    	{sleep (1);}
-    	__wait_flag_ACK = 0;
-        /* if (wait_flag == FALSE)
-         {
-         	res = read(fd, buf, 255);
-         	buf[res]=0;
-         	printf("Run: %s - %d\n", buf, res);
-         	if (res==1) STOP=TRUE;  stop loop if only a CR was input
-             wait_flag = TRUE;       wait for new input
-         }*/
-
+    	strcat(line, "\r\n");
+    	memcpy(&send_com[9], line, strlen(line)+1);
+//    	strcat(send_com, line);
+//    	cout  << send_com;
+    	Write_Uart(send_com, fd);
+    	while (_wait_flag_ACK == 0);
+    	_wait_flag_ACK = 0;
     	/*char commandChar[20] = "";
     	readstr = "";
     	string mystr = "";
     	printf (".\n");
     	usleep(100000);
 
-        write (fd, "AT", 2);
-    	if (Uart2.read().compare("UartReadError") != 0)
-    	{
-    		read = Uart2.read();
-    		cout << "\nRead from UART: " << read  << endl;
-    	}
     	cout << "Send: ";
     	getline(cin, mystr);
     	for (int i=0;;i++)
@@ -179,22 +179,15 @@ int main(){
           }
 
       }
-      if (nbytes == -1) return;
-        /* nul terminate the string and see if we got an OK response */
-        //printf("signal_handler_IO: signum = %d\r\n", signum);
+      if (nbytes < 4) return;
+      /*nul terminate the string and see if we got an OK response */
+      //printf("signal_handler_IO: signum = %d\r\n", signum);
       *bufptr = '\0';
       bufptr = buffer;
-      cout << "Received: " << bufptr << "Lenght: " << nbytes << endl;
+      cout << "Received: " << bufptr << endl;
 
-      if(nbytes > 4)
-      {
-          if(strstr(buffer, "ACK") != NULL)
-          {
-        	  __wait_flag_ACK = 1;
-              printf("ack  = %d \n", __wait_flag_ACK);
-          }
-          //else
-          //    _flag_ACK = 0;
-      }
+//    if(strstr(buffer, "ACK") != NULL)
+      if(Contains(buffer, "ACK") == true)
+      	  _wait_flag_ACK = 1;
   }
 
