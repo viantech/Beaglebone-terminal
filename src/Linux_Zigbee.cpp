@@ -23,7 +23,7 @@
 using namespace std;
 
 void signal_handler_IO (int status); 	// signal hanler
-int _wait_flag_ACK = 0;					// TRUE while no signal received
+volatile int _wait_flag_ACK = 0;					// TRUE while no signal received
 int fd;
 void Write_Uart (const void *mess, int port)
 {
@@ -111,8 +111,9 @@ int main(){
     //strcpy(send_com,pre_com);
     while(getline(&line, &flen, file_ptr) != -1 ) /* read a line */
     {
-    	strcat(line, "\r\n");
+    	strcat(line, "\r"); //watch out
     	memcpy(&send_com[9], line, strlen(line)+1);
+	//printf("fu: %02x %02x :ck\n", send_com[strlen(send_com) - 2], send_com[strlen(send_com)-1]);
 //    	strcat(send_com, line);
 //    	cout  << send_com;
     	Write_Uart(send_com, fd);
