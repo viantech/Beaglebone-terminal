@@ -11,6 +11,7 @@
 #include <string.h>
 #include <iostream>
 #include <cctype>
+#include <errno.h>
 
 //#include "BlackLib.h"
 //#include "BlackUART.h"
@@ -35,7 +36,7 @@ void Write_Uart (const void *mess, int port)
 	for (ptr_i = c_mess; *ptr_i; ptr_i++)
 	     len++;
 	write(port, c_mess, len + 1);
-	//tcflush(port, TCOFLUSH);
+//	tcflush(port, TCOFLUSH);
 	//sleep((len + 1 + 25) * 100);
 }
 
@@ -122,7 +123,7 @@ void sendFile()
 }
 
 int main(){
-	int nread = 0;
+	int nread = 0, nwrite = 0;
 	char mess[100];
 	struct termios newtio;
 	__sigset_t mask;
@@ -170,6 +171,12 @@ int main(){
 //    			mess[strlen(mess) - 1] = '\0';
     			mess[strlen(mess) - 1] = 0x0D;
     			write(fd, mess, strlen(mess) + 1);
+				if (nwrite < 0) {
+					if (errno != EINTR) {
+						perror ("write");
+						return 1;
+					}
+				}
 //    			while(_flag_OK == 0);
 //    			_flag_OK = 0;
     		}
@@ -190,7 +197,7 @@ int readKeyboard(char *buffer)
 	FD_ZERO (&inputs);
 	FD_SET(0, &inputs);
 	testfds = inputs;
-	timeout.tv_sec = 3;
+	timeout.tv_sec = 5;
 	timeout.tv_usec = 500000;
 	result = select(FD_SETSIZE, &testfds, (fd_set*)0, (fd_set*)0, &timeout);
 
@@ -200,9 +207,12 @@ int readKeyboard(char *buffer)
 			//printf("timeout \n");
 			break;
 		case -1:
-			//perror("select error");
-			return -1;
-			//break;
+			if (errno != EINTR)
+			{
+				perror ("select");
+				return 1;
+			}
+			break;
 		default:
 			if(FD_ISSET(0, &testfds))
 			{
@@ -210,9 +220,16 @@ int readKeyboard(char *buffer)
 				if(nread == 0)
 				{
 					printf("keyboard done \n");
-					return -1;
+					return 1;
 				}
 				nread = read(0, buffer, nread);
+				if (nread < 0) {
+					if (errno != EINTR) {
+						perror ("read");
+						return 1;
+					}
+				}
+
 				buffer[nread] = 0;
 				//printf("read %d from keyboard: %s \n", nread, buffer);
 			}
@@ -229,24 +246,30 @@ int readKeyboard(char *buffer)
   void signal_handler_IO (int status)
   {
       int nbytes = 0;
-      char buffer[100] = {0}, *bufptr = NULL;
+      char buffer[512] = {0}, *bufptr = NULL;
       if(status != SIGIO) return;
 
-      //read characters into our string buffer until we get a CR or NL
+      //read characters into our string buffer until we get a OK<CR><NL>
       bufptr = buffer;
-
       while ((nbytes = read(fd, bufptr, buffer + sizeof(buffer) - bufptr - 1)) > 0)
       {
           bufptr += nbytes;
-          if(nbytes > 4)
-          {
-              if (*(bufptr - 2) == 0x0D && *(bufptr - 1) == 0x0A)
-                      break;
-          }
+//          printf("It Okay %hhX:%d\n", buffer[nbytes],nbytes);
+//          if(nbytes > 4)
+//          {
+//              if (*(bufptr - 2) == 0x0D && *(bufptr - 1) == 0x0A)
+//          }
 
       }
       /*nul terminate the string and see if we got an OK response */
-      //printf("signal_handler_IO: signum = %d\r\n", signum);
+
+		if (nbytes < 0) {
+//			if (errno != EINTR) {
+//				perror ("read");
+//				return;
+//			}
+//			      printf("It done1 %hhX:%d\n", buffer[nbytes],nbytes);
+		}
       *bufptr = '\0';
       bufptr = buffer;
       cout << "Received: " << bufptr << endl;
