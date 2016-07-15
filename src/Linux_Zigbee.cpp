@@ -26,8 +26,10 @@ void sendFile();
 int readKeyboard(char *buffer);
 void signal_handler_IO (int status); 	// signal hanler
 volatile int _wait_flag_ACK = 0;					// TRUE while no signal received
-volatile int _flag_OK = 0;
+//volatile int _flag_C = 0;
 int fd;
+const char *pre_sink = "AT+SCAST:";
+char ACK_CommandC[20] = {0};
 void Write_Uart (const void *mess, int port)
 {
 	int len = 0;
@@ -68,22 +70,22 @@ void sendFile()
     file_ptr = fopen ("/home/quangdo/Downloads/Intelhex/demo.hex", "r");
     if (file_ptr == NULL) exit(EXIT_FAILURE);
 
-//    char* pre_com[10] = "AT+SCAST:";
     char send_com[100];
-    send_com[0] = 0x41; //'A';
-    send_com[1] = 0x54; //'T';
-    send_com[2] = 0x2B; //'+';
-    send_com[3] = 0x53; //'S';
-    send_com[4] = 0x43; //'C';
-    send_com[5] = 0x41; //'A';
-    send_com[6] = 0x53; //'S';
-    send_com[7] = 0x54; //'T';
-    send_com[8] = 0x3A; //':';
+//    send_com[0] = 0x41; //'A';
+//    send_com[1] = 0x54; //'T';
+//    send_com[2] = 0x2B; //'+';
+//    send_com[3] = 0x53; //'S';
+//    send_com[4] = 0x43; //'C';
+//    send_com[5] = 0x41; //'A';
+//    send_com[6] = 0x53; //'S';
+//    send_com[7] = 0x54; //'T';
+//    send_com[8] = 0x3A; //':';
     //strcpy(send_com,pre_com);
+    memcpy(send_com, pre_sink, strlen(pre_sink));
     while(getline(&line, &flen, file_ptr) != -1 ) /* read a line */
     {
     	strcat(line, "\r"); //watch out
-    	memcpy(&send_com[9], line, strlen(line)+1);
+    	memcpy(&send_com[strlen(pre_sink)], line, strlen(line));
     	//Write_Uart(send_com, fd);
     	write(fd, send_com, strlen(send_com) + 1);
     	while (_wait_flag_ACK == 0);
@@ -125,6 +127,8 @@ void sendFile()
 int main(){
 	int nread = 0, nwrite = 0;
 	char mess[100];
+	memcpy(ACK_CommandC, pre_sink, strlen(pre_sink));
+	strcat(ACK_CommandC, "A");
 	struct termios newtio;
 	__sigset_t mask;
 	mask.__val[_SIGSET_NWORDS] = {0};
@@ -177,8 +181,6 @@ int main(){
 						return 1;
 					}
 				}
-//    			while(_flag_OK == 0);
-//    			_flag_OK = 0;
     		}
     		nread = 0;
     	}
@@ -200,6 +202,7 @@ int readKeyboard(char *buffer)
 	timeout.tv_sec = 5;
 	timeout.tv_usec = 500000;
 	result = select(FD_SETSIZE, &testfds, (fd_set*)0, (fd_set*)0, &timeout);
+
 
 	switch(result)
 	{
@@ -251,7 +254,7 @@ int readKeyboard(char *buffer)
 
       //read characters into our string buffer until we get a OK<CR><NL>
       bufptr = buffer;
-      while ((nbytes = read(fd, bufptr, buffer + sizeof(buffer) - bufptr - 1)) > 0)
+      while ((nbytes = read(fd, bufptr, buffer + sizeof(buffer) - bufptr - 1 )) > 0 )
       {
           bufptr += nbytes;
 //          printf("It Okay %hhX:%d\n", buffer[nbytes],nbytes);
@@ -268,14 +271,23 @@ int readKeyboard(char *buffer)
 //				perror ("read");
 //				return;
 //			}
-//			      printf("It done1 %hhX:%d\n", buffer[nbytes],nbytes);
+//		printf("It done1 %hhX:%d\n", buffer[nbytes],nbytes);
 		}
       *bufptr = '\0';
       bufptr = buffer;
       cout << "Received: " << bufptr << endl;
 
-      if (Contains(buffer, "OK") == true)
-    	  _flag_OK = 1;
+      if (Contains(buffer, "Command@C") == true)
+      {
+    	  char *com_ptr = strstr(buffer, "@C");
+    	  //_flag_C = 1;
+//    	  ACK_CommandC[10] = buffer[strlen(buffer)-3];
+    	  printf("chi den: %s",com_ptr);
+    	  strcat(ACK_CommandC, "\r");
+    	  //printf("%s",ACK_CommandC);
+    	  write(fd, ACK_CommandC, strlen(ACK_CommandC) + 1);
+    	  //printf("Nhan command %c %c\n",buffer[strlen(buffer)-3], buffer[strlen(buffer)-4]);
+      }
       if(Contains(buffer, "ACK") == true)
       	  _wait_flag_ACK = 1;
 }

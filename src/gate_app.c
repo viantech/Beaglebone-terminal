@@ -23,7 +23,7 @@ void *recvThread(void *sock);
 volatile int _wait_flag_ACK = 0;
 char flag_stop_thread = 0;
 char message[100] , server_reply[100] = {0};
-FILE *f, *d;
+FILE *fi, *df;
 void printMenu()
 {
 	//system("clear");
@@ -93,12 +93,15 @@ int main()
 {
     int sock, port = 4096, nread = 0, nrev = 0;
     char ip_addr[100] = {0}, get_menu = 0;
+    const char *pre_commandC = "AT+UCAST:000D6F000C469B5B=Command@";
+    char CComand[100];
     struct sockaddr_in server;
     struct timeval tv;
     pthread_t recv_thread;
     void* thread_ret;
 
     memcpy(ip_addr, "192.168.204.247",15);
+    memcpy(CComand, pre_commandC, strlen(pre_commandC));
    /* while(1)
     {
     	printMenu();
@@ -167,7 +170,7 @@ int main()
 			//Send some data
 			if(strstr(message, "at") != NULL)
 			{
-				message[strlen(message)] = 0x0D;
+				message[strlen(message) - 1] = 0x0D;
 				if (send(sock, message, strlen(message), 0) < 0) {
 					perror("Send failed");
 					return 1;
@@ -181,8 +184,21 @@ int main()
 //				strtok(message,":");
 //				remote_ID = strtok(NULL, ":");
 				memmove(remote_ID, message + 7, 4);
-				//printf("fuck:%s:endla\n",remote_ID);
 				readFile(remote_ID, sock);
+			}
+			if(strstr(message, "C"))
+			{
+				message[strlen(message) - 1] = '\0';
+				strcat(message, "\r");
+				//strcat(CComand,pre_commandC);
+				memcpy(&CComand[strlen(pre_commandC)], message, strlen(message));
+//				strcat(CComand,message);
+
+				//printf("\nlenh la: %s %s\n",message,CComand);
+				if (send(sock, CComand, strlen(CComand) + 1, 0) < 0) {
+					perror("Send failed");
+					return 1;
+				}
 			}
 			nread = 0;
 		}
@@ -191,51 +207,49 @@ int main()
 	pthread_join(recv_thread, &thread_ret);
 	printf("close socket %d \n", sock);
     close(sock);
-	fclose(f);
-	fclose(d);
+	fclose(fi);
+	fclose(df);
     return 0;
 }
 
-
 int readKeyboard(char *buffer)
 {
-		//char buffer[128];
-		int result, nread = 0;
-		fd_set inputs, testfds;
-		struct timeval timeout;
-		FD_ZERO (&inputs);
-		FD_SET(0, &inputs);
-			testfds = inputs;
-			timeout.tv_sec = 3;
-			timeout.tv_usec = 500000;
-			result = select(FD_SETSIZE, &testfds, (fd_set*)0, (fd_set*)0, &timeout);
+	//char buffer[128];
+	int result, nread = 0;
+	fd_set inputs, testfds;
+	struct timeval timeout;
+	FD_ZERO (&inputs);
+	FD_SET(0, &inputs);
+	testfds = inputs;
+	timeout.tv_sec = 3;
+	timeout.tv_usec = 500000;
+	result = select(FD_SETSIZE, &testfds, (fd_set*)0, (fd_set*)0, &timeout);
 
-			switch(result)
+	switch(result)
+	{
+		case 0:
+			//printf("timeout \n");
+			break;
+		case -1:
+			perror("select error");
+			return -1;
+			break;
+		default:
+			if(FD_ISSET(0, &testfds))
 			{
-			case 0:
-				//printf("timeout \n");
-				break;
-			case -1:
-				perror("select error");
-				return -1;
-				break;
-			default:
-				if(FD_ISSET(0, &testfds))
+				ioctl(0, FIONREAD, &nread);
+				if(nread == 0)
 				{
-					ioctl(0, FIONREAD, &nread);
-					if(nread == 0)
-					{
-						printf("keyboard done \n");
-						return -1;
-					}
-					nread = read(0, buffer, nread);
-					buffer[nread] = 0;
-					//printf("read %d from keyboard: %s \n", nread, buffer);
+					printf("keyboard done \n");
+					return -1;
 				}
-				break;
-				}
-
-		return nread;
+				nread = read(0, buffer, nread);
+				buffer[nread] = 0;
+				//printf("read %d from keyboard: %s \n", nread, buffer);
+			}
+			break;
+	}
+	return nread;
 }
 
 
@@ -249,15 +263,15 @@ void *recvThread(void *sock)
     time_t mytime;
     mytime = time(NULL);
     //create file and save log data
-    f = fopen("log.txt", "a");
-    d = fopen("draft.txt", "a");
-    if(f == NULL)
+    fi = fopen("log.txt", "a");
+    df = fopen("draft.txt", "a");
+    if(fi == NULL)
     {
     	printf("could not open file, data may be lost \n");
     }
     //write time start program:
-   fprintf(f, "%s", ctime(&mytime));
-   fprintf(d, "%s", ctime(&mytime));
+   fprintf(fi, "%s", ctime(&mytime));
+   fprintf(df, "%s", ctime(&mytime));
 
 	while (1) {
 
@@ -348,7 +362,7 @@ void *recvThread(void *sock)
 					flag_cont_rev = 0;
 				}*/
 				//else
-				fprintf(d, "%s", server_reply); //write to draft file
+				fprintf(df, "%s", server_reply); //write to draft file
 			}
 			nrev = -1;
 			//bzero(server_reply, sizeof(server_reply));
