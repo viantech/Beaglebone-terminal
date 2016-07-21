@@ -91,9 +91,9 @@ void readFile(char *ID, int sock)
 }
 int main()
 {
-    int sock, port = 4096, nread = 0, nrev = 0;
-    char ip_addr[100] = {0}, get_menu = 0;
-    const char *pre_commandC = "AT+UCAST:000D6F000C469B5B=Command@";
+    int sock, nread = 0;
+    char ip_addr[100] = {0};
+    const char *pre_commandC = "AT+UCAST:000D6F000C469B5B=@";
     char CComand[100];
     struct sockaddr_in server;
     struct timeval tv;
@@ -255,10 +255,10 @@ int readKeyboard(char *buffer)
 
 void *recvThread(void *sock)
 {
-	int nrev, count_CRLF = 0, timeout = 0;
+	int nrev;// count_CRLF = 0, timeout = 0;
 	struct timeval begin, stop;
-    static char flag_count_timer = 0, flag_cont_rev = 0;
-    char rev_bcast[200] = {0};
+    static char flag_count_timer = 0;//, flag_cont_rev = 0;
+//    char rev_bcast[200] = {0};
     char *buffptr = NULL, *findCR = NULL;
     time_t mytime;
     mytime = time(NULL);
@@ -278,7 +278,7 @@ void *recvThread(void *sock)
 
 		bzero(server_reply, sizeof(server_reply)); // clear buffer;
 		buffptr = server_reply;
-		timeout = 0;
+//		timeout = 0;
 		while ((nrev = recv((int *) sock, buffptr, server_reply + sizeof(server_reply) - buffptr - 1, 0)) > 0)
 		{
 		  buffptr += nrev;
@@ -336,9 +336,9 @@ void *recvThread(void *sock)
 					gettimeofday(&begin, NULL);
 					flag_count_timer = 1;
 				}
-				//fprintf(f, "%s", rev_bcast); //write to log file
-				//fflush(f);
-//
+//				fprintf(f, "%s", rev_bcast); //write to log file
+//				fflush(f);
+
 				if ((flag_count_timer == 1)
 						&& (strstr(server_reply, "done") != NULL)) {
 					gettimeofday(&stop, NULL);
@@ -385,4 +385,5 @@ void *recvThread(void *sock)
 			pthread_exit(NULL);
 		}
 	}
+	return NULL;
 }
