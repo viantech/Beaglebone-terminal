@@ -24,6 +24,7 @@
 using namespace std;
 void sendFile();
 int readKeyboard(char *buffer);
+void Command_Handler(char *command);
 void signal_handler_IO (int status); 	// signal hanler
 volatile int _wait_flag_ACK = 0;					// TRUE while no signal received
 //volatile int _flag_C = 0;
@@ -128,7 +129,8 @@ int main(){
 	int nread = 0, nwrite = 0;
 	char mess[100];
 	memcpy(ACK_CommandC, pre_sink, strlen(pre_sink));
-	strcat(ACK_CommandC, "A");
+	ACK_CommandC[strlen(pre_sink)] = 'A';
+//	strcat(ACK_CommandC, "A");
 	struct termios newtio;
 	__sigset_t mask;
 	mask.__val[_SIGSET_NWORDS] = {0};
@@ -241,6 +243,60 @@ int readKeyboard(char *buffer)
 	return nread;
 }
 
+void Command_Handler(char *command)
+{
+	int id = *(command + 2) - '0';
+	switch(id){
+	case 0:
+		ACK_CommandC[10] = '0';
+		break;
+	case 1:
+		if (*(command + 3) - '0' == 0) {
+			string status_str;
+			status_str = "10 + Battery Level: 79%, Maintenance: Ready\n";
+			char *status_c = new char[status_str.size() + 1];
+			std::copy(status_str.begin(), status_str.end(), status_c);
+			status_c[status_str.size()] = '\0';
+			strcat(ACK_CommandC, status_c);
+		}
+		else if (*(command + 3) - '1' == 0)  strcat(ACK_CommandC, "11");
+		else  ACK_CommandC[10] = '1';
+		break;
+	case 2:
+		ACK_CommandC[10] = '2';
+		break;
+	case 3:
+		ACK_CommandC[10] = '3';
+		break;
+	case 4:
+		ACK_CommandC[10] = '4';
+		break;
+	case 5:
+		ACK_CommandC[10] = '5';
+		break;
+	case 6:
+		ACK_CommandC[10] = '6';
+		break;
+	case 7:
+		ACK_CommandC[10] = '7';
+		break;
+	case 8:
+		char posit[14];
+		sprintf(posit, "8 + %04d,%04d", rand() % 1000, rand() % 1000);
+		strcat(ACK_CommandC, posit);
+		break;
+	case 9:
+		char batt_lv[7];
+		batt_lv[7] = {0};
+		sprintf(batt_lv, "9 + %d%c", rand() % 100 + 1, 37);
+		strcat(ACK_CommandC, batt_lv);
+		break;
+	default:
+		printf("[ERROR]: Please check your typing command \n");
+		break;
+	}
+
+}
   /***************************************************************************
   * signal handler. sets wait_flag to FALSE, to indicate above loop that     *
   * characters have been received.                                           *
@@ -250,6 +306,7 @@ int readKeyboard(char *buffer)
   {
       int nbytes = 0;
       char buffer[512] = {0}, *bufptr = NULL;
+      char *com_ptr;
       if(status != SIGIO) return;
 
       //read characters into our string buffer until we get a OK<CR><NL>
@@ -260,32 +317,24 @@ int readKeyboard(char *buffer)
 //          printf("It Okay %hhX:%d\n", buffer[nbytes],nbytes);
 //          if(nbytes > 4)
 //          {
-//              if (*(bufptr - 2) == 0x0D && *(bufptr - 1) == 0x0A)
+//              if (*(bufptr - 2) == 0x0D || *(bufptr - 1) == 0x0A)
 //          }
 
       }
       /*nul terminate the string and see if we got an OK response */
 
-		if (nbytes < 0) {
-//			if (errno != EINTR) {
-//				perror ("read");
-//				return;
-//			}
-//		printf("It done1 %hhX:%d\n", buffer[nbytes],nbytes);
-		}
       *bufptr = '\0';
       bufptr = buffer;
       cout << "Received: " << bufptr << endl;
 
-      if (Contains(buffer, "Command@C") == true)
+      if ((com_ptr = strstr(bufptr, "@C")) != NULL)
       {
-    	  char *com_ptr = strstr(buffer, "@C");
     	  //_flag_C = 1;
-//    	  ACK_CommandC[10] = buffer[strlen(buffer)-3];
-    	  printf("chi den: %s",com_ptr);
+    	  Command_Handler(com_ptr);
     	  strcat(ACK_CommandC, "\r");
     	  //printf("%s",ACK_CommandC);
     	  write(fd, ACK_CommandC, strlen(ACK_CommandC) + 1);
+    	  bzero(&ACK_CommandC[strlen(pre_sink) + 1], 9);
     	  //printf("Nhan command %c %c\n",buffer[strlen(buffer)-3], buffer[strlen(buffer)-4]);
       }
       if(Contains(buffer, "ACK") == true)
